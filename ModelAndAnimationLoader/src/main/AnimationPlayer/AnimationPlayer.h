@@ -13,13 +13,15 @@ namespace mal
         void setDefaultScene();
         void setScene(const std::string& name);
 
-        void play(const std::string& name);
+        void play(const std::string& name, const float time = 0);
 
         void update(const float delta);
 
         void setNodeTransform(const std::string& name, const glm::mat4& transform);
 
         const std::vector<glm::mat4>& getBoneTransforms() const;
+
+        float getCurrentTime() const;
 
     private:
         void updateNode(const std::string& name, const model::Node& node, const glm::mat4& parentTransform);

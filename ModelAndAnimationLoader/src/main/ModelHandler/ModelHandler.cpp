@@ -105,7 +105,10 @@ void ModelHandler::processNode(const aiNode* node, model::Node* modelNode)
     const auto& src = node->mTransformation;
     auto& dst = modelNode->mTransform;
 
-    std::memcpy(&dst, &src, sizeof(float) * 16);
+    dst[0] = { src.a1, src.b1, src.c1, src.d1 };
+    dst[1] = { src.a2, src.b2, src.c2, src.d2 };
+    dst[2] = { src.a3, src.b3, src.c3, src.d3 };
+    dst[3] = { src.a4, src.b4, src.c4, src.d4 };
 
     for (unsigned int i = 0; i < meshCount; i++)
     {
@@ -259,7 +262,10 @@ void ModelHandler::processBones(const aiMesh* mesh, model::VertexArray& vertices
             const auto& src = bone->mOffsetMatrix;
             auto& dst = modelBone.mOffsetMatrix;
 
-            std::memcpy(&dst, &src, sizeof(float) * 16);
+            dst[0] = { src.a1, src.b1, src.c1, src.d1 };
+            dst[1] = { src.a2, src.b2, src.c2, src.d2 };
+            dst[2] = { src.a3, src.b3, src.c3, src.d3 };
+            dst[3] = { src.a4, src.b4, src.c4, src.d4 };
 
             boneId = modelBone.mBoneId;
             sActiveModelScene->mBones[boneName] = modelBone;

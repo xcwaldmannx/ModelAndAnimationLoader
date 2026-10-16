@@ -42,10 +42,10 @@ void AnimationPlayer::setScene(const std::string& name)
     }
 }
 
-void AnimationPlayer::play(const std::string& name)
+void AnimationPlayer::play(const std::string& name, const float time)
 {
     mCurrentAnimation = &mAnimationSet.getAnimation(name);
-    mCurrentTime = 0.0f;
+    mCurrentTime = time;
 }
 
 void AnimationPlayer::update(const float delta)
@@ -84,6 +84,11 @@ void AnimationPlayer::setNodeTransform(const std::string& name, const glm::mat4&
 const std::vector<glm::mat4>& AnimationPlayer::getBoneTransforms() const
 {
     return mBoneTransforms;
+}
+
+float AnimationPlayer::getCurrentTime() const
+{
+    return mCurrentTime;
 }
 
 void AnimationPlayer::updateNode(const std::string& name, const model::Node& node, const glm::mat4& parentTransform)
