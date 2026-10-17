@@ -16,10 +16,12 @@ namespace mal
         static model::Model load(const std::string& filename, Configuration& config);
 
     private:
-        static void categorize(const aiScene* scene);
         static void processScene(const aiScene* scene, model::Scene* modelScene);
         static void processNode(const aiNode* scene, model::Node* modelNode);
         static void processMesh(const aiMesh* mesh, model::Mesh* modelMesh);
+        static void processBones(const aiMesh* mesh, model::VertexArray& vertices);
+        static void processTextures(const aiScene* scene);
+        static void processMaterials(const aiScene* scene);
 
         static void getVertexData(
             const aiMesh* mesh,
@@ -28,7 +30,6 @@ namespace mal
             glm::vec3& boundsMin,
             glm::vec3& boundsMax);
 
-        static void processBones(const aiMesh* mesh, model::VertexArray& vertices);
 
     private:
         inline static model::Scene* sActiveModelScene = nullptr;

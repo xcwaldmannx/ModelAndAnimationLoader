@@ -1,6 +1,7 @@
 #include "../main/Mal.h"
 
 #include <filesystem>
+#include <iostream>
 
 #include <string>
 #include <vector>

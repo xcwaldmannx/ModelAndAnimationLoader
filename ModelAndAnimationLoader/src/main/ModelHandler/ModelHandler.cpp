@@ -1,5 +1,7 @@
 #include "ModelHandler.h"
 
+#include "../ImageLoader/ImageLoader.h"
+
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
@@ -76,17 +78,6 @@ model::Model ModelHandler::load(const std::string& filename, Configuration& conf
     return resultModel;
 }
 
-void ModelHandler::categorize(const aiScene* scene)
-{
-    if (scene->HasAnimations()) sActiveModel->mSceneElements |= ANIMATION;
-    if (scene->HasCameras())    sActiveModel->mSceneElements |= CAMERA;
-    if (scene->HasLights())     sActiveModel->mSceneElements |= LIGHT;
-    if (scene->HasMaterials())  sActiveModel->mSceneElements |= MATERIAL;
-    if (scene->HasMeshes())     sActiveModel->mSceneElements |= MESH;
-    if (scene->HasSkeletons())  sActiveModel->mSceneElements |= SKELETON;
-    if (scene->HasTextures())   sActiveModel->mSceneElements |= TEXTURE;
-}
-
 void ModelHandler::processScene(const aiScene* scene, model::Scene* modelScene)
 {
     const auto& node = scene->mRootNode;
@@ -145,6 +136,8 @@ void ModelHandler::processMesh(const aiMesh* mesh, model::Mesh* modelMesh)
     modelMesh->mIndexOffset = sIndexOffset;
     modelMesh->mIndexCount = indices.size();
 
+    modelMesh->mMaterialIndex = mesh->mMaterialIndex;
+
     if (mesh->HasBones())
     {
         processBones(mesh, vertices);
@@ -155,6 +148,130 @@ void ModelHandler::processMesh(const aiMesh* mesh, model::Mesh* modelMesh)
 
     sVertexOffset += vertices.size();
     sIndexOffset += indices.size();
+}
+
+void ModelHandler::processBones(const aiMesh* mesh, model::VertexArray& vertices)
+{
+    const unsigned int boneCount = mesh->mNumBones;
+
+    for (unsigned int boneIndex = 0; boneIndex < boneCount; boneIndex++)
+    {
+        int boneId = -1;
+
+        const auto& bone = mesh->mBones[boneIndex];
+        const auto& boneName = bone->mName.C_Str();
+
+        auto modelBoneIt = sActiveModelScene->mBones.find(boneName);
+
+        if (modelBoneIt == sActiveModelScene->mBones.end())
+        {
+            model::Bone modelBone;
+            modelBone.mBoneId = static_cast<int>(sActiveModelScene->mBones.size());
+
+            const auto& src = bone->mOffsetMatrix;
+            auto& dst = modelBone.mOffsetMatrix;
+
+            dst[0] = { src.a1, src.b1, src.c1, src.d1 };
+            dst[1] = { src.a2, src.b2, src.c2, src.d2 };
+            dst[2] = { src.a3, src.b3, src.c3, src.d3 };
+            dst[3] = { src.a4, src.b4, src.c4, src.d4 };
+
+            boneId = modelBone.mBoneId;
+            sActiveModelScene->mBones[boneName] = modelBone;
+        }
+        else
+        {
+            boneId = modelBoneIt->second.mBoneId;
+        }
+
+        for (unsigned int weightIndex = 0; weightIndex < bone->mNumWeights; weightIndex++)
+        {
+            const aiVertexWeight& weight = bone->mWeights[weightIndex];
+
+            auto& vertex = vertices[weight.mVertexId];
+
+            for (int influenceIndex = 0; influenceIndex < model::MAX_BONE_INFLUENCE; influenceIndex++)
+            {
+                if (vertex.mBoneIds[influenceIndex] == -1)
+                {
+                    vertex.mBoneIds[influenceIndex] = boneId;
+                    vertex.mBoneWeights[influenceIndex] = weight.mWeight;
+
+                    break;
+                }
+            }
+        }
+    }
+}
+
+void ModelHandler::processTextures(const aiScene* scene)
+{
+    for (unsigned int i = 0; i < scene->mNumTextures; ++i)
+    {
+        const aiTexture* texture = scene->mTextures[i];
+
+        RawImage image;
+
+        ImageLoader::loadImage(texture, &image);
+
+        model::Texture tex{};
+        tex.mWidth = image.mWidth;
+        tex.mHeight = image.mHeight;
+        tex.mChannels = image.mChannels;
+        tex.mPixels = image.mPixels;
+
+        sActiveModel->mTextures.emplace_back(std::move(tex));
+    }
+}
+
+void ModelHandler::processMaterials(const aiScene* scene)
+{
+    auto& materials = sActiveModel->mMaterials;
+
+    materials.reserve(scene->mNumMaterials);
+
+    auto getTextureIndex = [scene](const aiMaterial* material, aiTextureType type) -> int
+        {
+            aiString path;
+
+            if (material->GetTexture(type, 0, &path) != AI_SUCCESS) return -1;
+
+            const aiTexture* texture = scene->GetEmbeddedTexture(path.C_Str());
+
+            if (!texture) return -1;
+
+            for (unsigned int i = 0; i < scene->mNumTextures; ++i)
+            {
+                if (scene->mTextures[i] == texture) return static_cast<int>(i);
+            }
+
+            return -1;
+        };
+
+    for (unsigned int i = 0; i < scene->mNumMaterials; ++i)
+    {
+        const aiMaterial* src = scene->mMaterials[i];
+
+        model::Material mat;
+
+        aiColor4D baseColor;
+
+        if (src->Get(AI_MATKEY_BASE_COLOR, baseColor) == AI_SUCCESS)
+        {
+            mat.mBaseColor = { baseColor.r, baseColor.g, baseColor.b, baseColor.a };
+        }
+
+        src->Get(AI_MATKEY_METALLIC_FACTOR, mat.mMetallic);
+        src->Get(AI_MATKEY_ROUGHNESS_FACTOR, mat.mRoughness);
+
+        mat.mBaseColorTextureId = getTextureIndex(src, aiTextureType_BASE_COLOR);
+        mat.mNormalTextureId = getTextureIndex(src, aiTextureType_NORMAL_CAMERA);
+        mat.mMetallicRoughnessTextureId = getTextureIndex(src, aiTextureType_METALNESS);
+        mat.mOcclusionTextureId = getTextureIndex(src, aiTextureType_AMBIENT_OCCLUSION);
+        mat.mEmissiveTextureId = getTextureIndex(src, aiTextureType_EMISSION_COLOR);
+
+        materials.emplace_back(std::move(mat));
+    }
 }
 
 void ModelHandler::getVertexData(
@@ -237,60 +354,6 @@ void ModelHandler::getVertexData(
         for (unsigned int j = 0; j < face.mNumIndices; j++)
         {
             indices.push_back(face.mIndices[j] + sVertexOffset);
-        }
-    }
-}
-
-void ModelHandler::processBones(const aiMesh* mesh, model::VertexArray& vertices)
-{
-    const unsigned int boneCount = mesh->mNumBones;
-
-    for (unsigned int boneIndex = 0; boneIndex < boneCount; boneIndex++)
-    {
-        int boneId = -1;
-
-        const auto& bone = mesh->mBones[boneIndex];
-        const auto& boneName = bone->mName.C_Str();
-
-        auto modelBoneIt = sActiveModelScene->mBones.find(boneName);
-
-        if (modelBoneIt == sActiveModelScene->mBones.end())
-        {
-            model::Bone modelBone;
-            modelBone.mBoneId = static_cast<int>(sActiveModelScene->mBones.size());
-
-            const auto& src = bone->mOffsetMatrix;
-            auto& dst = modelBone.mOffsetMatrix;
-
-            dst[0] = { src.a1, src.b1, src.c1, src.d1 };
-            dst[1] = { src.a2, src.b2, src.c2, src.d2 };
-            dst[2] = { src.a3, src.b3, src.c3, src.d3 };
-            dst[3] = { src.a4, src.b4, src.c4, src.d4 };
-
-            boneId = modelBone.mBoneId;
-            sActiveModelScene->mBones[boneName] = modelBone;
-        }
-        else
-        {
-            boneId = modelBoneIt->second.mBoneId;
-        }
-
-        for (unsigned int weightIndex = 0; weightIndex < bone->mNumWeights; weightIndex++)
-        {
-            const aiVertexWeight& weight = bone->mWeights[weightIndex];
-
-            auto& vertex = vertices[weight.mVertexId];
-
-            for (int influenceIndex = 0; influenceIndex < model::MAX_BONE_INFLUENCE; influenceIndex++)
-            {
-                if (vertex.mBoneIds[influenceIndex] == -1)
-                {
-                    vertex.mBoneIds[influenceIndex] = boneId;
-                    vertex.mBoneWeights[influenceIndex] = weight.mWeight;
-
-                    break;
-                }
-            }
         }
     }
 }

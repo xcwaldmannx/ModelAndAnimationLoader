@@ -47,10 +47,9 @@ add_library(${LIB_TARGET} STATIC ${LIB_SOURCES})
 target_include_directories(${LIB_TARGET}
         PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}/src/main"
+        "${VENDORS_DIR}/stb"
 )
 
-# Link dependencies to the library.
-# PUBLIC if your library headers include them (common for glm/json).
 target_link_libraries(${LIB_TARGET}
         PUBLIC
         glm::glm

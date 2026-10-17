@@ -37,12 +37,37 @@ namespace mal
     namespace model
     {
         struct Vertex;
+        struct Texture;
+        struct Material;
 
         using VertexArray = std::vector<Vertex>;
-        using IndexArray = std::vector<unsigned int>;
+        using IndexArray = std::vector<uint32_t>;
+        using TextureArray = std::vector<Texture>;
+        using MaterialArray = std::vector<Material>;
 
-        constexpr unsigned int MAX_BONE_INFLUENCE = 4;
-        constexpr unsigned int MAX_BONE_WEIGHTS   = 4;
+        constexpr uint32_t MAX_BONE_INFLUENCE = 4;
+        constexpr uint32_t MAX_BONE_WEIGHTS   = 4;
+
+        struct Texture
+        {
+            uint32_t mWidth = 0;
+            uint32_t mHeight = 0;
+            uint32_t mChannels = 4;
+            std::vector<uint8_t> mPixels;
+        };
+
+        struct Material
+        {
+            glm::vec4 mBaseColor{ 1.0f };
+            float mMetallic = 1.0f;
+            float mRoughness = 1.0f;
+
+            int32_t mBaseColorTextureId = -1;
+            int32_t mNormalTextureId = -1;
+            int32_t mMetallicRoughnessTextureId = -1;
+            int32_t mOcclusionTextureId = -1;
+            int32_t mEmissiveTextureId = -1;
+        };
 
         struct Vertex
         {
@@ -64,22 +89,23 @@ namespace mal
 
         struct VertexWeight
         {
-            unsigned int mVertexId = 0;
+            uint32_t mVertexId = 0;
             float mWeight = 0;
         };
 
         struct Bone
         {
-            int mBoneId = -1;
+            int32_t mBoneId = -1;
             glm::mat4 mOffsetMatrix{};
         };
 
         struct Mesh
         {
-            unsigned int mVertexOffset = 0;
-            unsigned int mVertexCount = 0;
-            unsigned int mIndexOffset = 0;
-            unsigned int mIndexCount = 0;
+            uint32_t mVertexOffset  = 0;
+            uint32_t mVertexCount   = 0;
+            uint32_t mIndexOffset   = 0;
+            uint32_t mIndexCount    = 0;
+            uint32_t mMaterialIndex = 0;
         };
 
         struct Node
@@ -118,6 +144,16 @@ namespace mal
             const IndexArray& getIndices() const
             {
                 return mIndices;
+            }
+
+            const TextureArray& getTextures() const
+            {
+                return mTextures;
+            }
+
+            const MaterialArray& getMaterials() const
+            {
+                return mMaterials;
             }
 
             glm::vec3 getBoundsMin() const
@@ -168,12 +204,15 @@ namespace mal
         private:
             char mSceneElements = 0;
 
-            std::unordered_map<std::string, Scene> mScenes;
-
-            VertexArray mVertices;
-            IndexArray mIndices;
             glm::vec3 mBoundsMin;
             glm::vec3 mBoundsMax;
+
+            std::unordered_map<std::string, Scene> mScenes;
+            VertexArray mVertices;
+            IndexArray mIndices;
+            TextureArray mTextures;
+            MaterialArray mMaterials;
+
 
             friend class mal::Loader;
             friend class mal::ModelHandler;
