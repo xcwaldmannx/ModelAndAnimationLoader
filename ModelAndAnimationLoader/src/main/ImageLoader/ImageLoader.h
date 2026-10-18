@@ -5,7 +5,8 @@
 
 #include <assimp/scene.h>
 
-struct RawImage {
+struct RawImage
+{
 	std::string mFilename;
 	int mWidth;
 	int mHeight;
@@ -13,7 +14,8 @@ struct RawImage {
 	std::vector<unsigned char> mPixels;
 };
 
-class ImageLoader {
+class ImageLoader
+{
 public:
 	static void loadImage(const aiTexture* texture, RawImage* image);
 };

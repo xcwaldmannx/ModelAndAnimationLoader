@@ -58,15 +58,15 @@ target_link_libraries(${LIB_TARGET}
 )
 
 # ---- Executable ----
-set(EXEC_TARGET ${PROJECT_NAME}_exec)
+#set(EXEC_TARGET ${PROJECT_NAME}_exec)
 
-file(GLOB EXEC_SOURCES CONFIGURE_DEPENDS
-        "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}/src/exec/*.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}/src/exec/*.h"
-)
+#file(GLOB EXEC_SOURCES CONFIGURE_DEPENDS
+#        "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}/src/exec/*.cpp"
+#        "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}/src/exec/*.h"
+#)
 
-add_executable(${EXEC_TARGET} ${EXEC_SOURCES})
-target_link_libraries(${EXEC_TARGET} PRIVATE ${LIB_TARGET})
+#add_executable(${EXEC_TARGET} ${EXEC_SOURCES})
+#target_link_libraries(${EXEC_TARGET} PRIVATE ${LIB_TARGET})
 
 # ---- Test ----
 set(TEST_TARGET ${PROJECT_NAME}_test)

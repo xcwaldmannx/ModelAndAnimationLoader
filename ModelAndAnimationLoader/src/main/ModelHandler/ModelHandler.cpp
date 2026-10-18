@@ -58,6 +58,9 @@ model::Model ModelHandler::load(const std::string& filename, Configuration& conf
 
     processScene(scene, sActiveModelScene);
 
+    processTextures(scene);
+    processMaterials(scene);
+
     model::Model resultModel = *sActiveModel;
 
     sActiveModelScene = nullptr;
@@ -206,6 +209,8 @@ void ModelHandler::processBones(const aiMesh* mesh, model::VertexArray& vertices
 
 void ModelHandler::processTextures(const aiScene* scene)
 {
+    if (!scene->HasTextures()) return;
+
     for (unsigned int i = 0; i < scene->mNumTextures; ++i)
     {
         const aiTexture* texture = scene->mTextures[i];
@@ -226,6 +231,8 @@ void ModelHandler::processTextures(const aiScene* scene)
 
 void ModelHandler::processMaterials(const aiScene* scene)
 {
+    if (!scene->HasMaterials()) return;
+
     auto& materials = sActiveModel->mMaterials;
 
     materials.reserve(scene->mNumMaterials);
